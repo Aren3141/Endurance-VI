@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Endurance VI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0a0a1a; color: #e5e5e5; }
+        .sidebar-link { transition: all 0.2s ease; }
+        .sidebar-link:hover, .sidebar-link.active { background-color: #ef4444; color: white; }
+        .modal { display: none; }
+        .modal.flex { display: flex; }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="flex h-screen bg-gray-900">
+        <!-- Sidebar -->
+        <aside class="w-64 flex-shrink-0 bg-gray-800 p-4">
+            <div class="text-center mb-10">
+                <h1 class="text-2xl font-bold tracking-wider">ENDURANCE <span class="text-red-500">VI</span></h1>
+                <p class="text-gray-400 text-sm">Admin Panel</p>
+            </div>
+            <nav class="space-y-2">
+                <a href="#" id="nav-messages" class="sidebar-link active flex items-center p-3 rounded-lg">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    Messages
+                </a>
+                <a href="#" id="nav-files" class="sidebar-link flex items-center p-3 rounded-lg">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    File Uploads
+                </a>
+            </nav>
+            <div class="absolute bottom-4 left-4 w-56">
+                <a href="index.html" class="sidebar-link block w-full text-center p-3 rounded-lg text-gray-300 bg-gray-700 hover:bg-gray-600">View Main Site</a>
+                <button id="logout-button" class="mt-2 sidebar-link block w-full text-center p-3 rounded-lg text-gray-300 bg-red-800 hover:bg-red-700">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8 overflow-y-auto">
+            <!-- Messages View -->
+            <div id="view-messages">
+                <h2 class="text-3xl font-bold mb-6">Contact Messages</h2>
+                <div id="messages-list" class="space-y-4">
+                    <!-- Messages will be loaded here -->
+                    <p>Loading messages...</p>
+                </div>
+            </div>
+
+            <!-- File Uploads View -->
+            <div id="view-files" class="hidden">
+                <h2 class="text-3xl font-bold mb-6">Upload & Manage Files</h2>
+                <div class="bg-gray-800 p-6 rounded-lg mb-8">
+                    <h3 class="font-bold mb-4">Upload New File</h3>
+                    <input type="file" id="file-input" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700"/>
+                    <button id="upload-button" class="mt-4 bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg font-semibold">Upload</button>
+                    <div id="upload-progress" class="mt-4 w-full bg-gray-700 rounded-full h-2.5 hidden"><div id="progress-bar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%"></div></div>
+                </div>
+                <div>
+                    <h3 class="font-bold mb-4">Uploaded Files</h3>
+                    <div id="files-list" class="space-y-3">
+                        <p>Loading files...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Message Detail Modal -->
+    <div id="message-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-lg max-w-2xl w-full">
+            <h3 id="modal-name" class="text-2xl font-bold"></h3>
+            <p id="modal-email" class="text-sm text-red-400 mb-4"></p>
+            <p id="modal-message" class="text-gray-300 whitespace-pre-wrap mb-6"></p>
+            <div class="flex justify-end space-x-4">
+                <a id="modal-reply-btn" href="#" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-semibold">Reply</a>
+                <button id="modal-delete-btn" class="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg font-semibold">Delete</button>
+                <button id="modal-close-btn" class="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg font-semibold">Close</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // ====================================================================================
+        // !! CRITICAL SETUP STEP !!
+        // ====================================================================================
+        // The error "Firebase configuration is missing" is intentional. It means you need to
+        // connect this website to your personal Firebase project.
+        //
+        // To get your keys:
+        //   1. Go to your Firebase project console: https://console.firebase.google.com/
+        //   2. In your project, go to Project Settings (click the gear icon ⚙️ near the top left).
+        //   3. In the "General" tab, scroll down to the "Your apps" section.
+        //   4. Look for the "Firebase SDK snippet" and select the "Config" option.
+        //   5. Copy the entire 'firebaseConfig' object provided by Google.
+        //   6. Paste it below, completely replacing the placeholder object.
+        //
+        // This admin panel will NOT work until you complete this step.
+        // You must also do this for 'login.html' and 'index.html'.
+        // ====================================================================================
+
+        // IMPORTANT: Replace the entire object below with your actual Firebase configuration.
+        import { firebaseConfig } from './firebase-config.js';
+        
+        // **Firebase Configuration Check**
+        // This check is crucial. If you see the error message below in your browser's console,
+        // it means you haven't replaced the placeholder Firebase config with your own.
+        if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+            const errorHTML = `<div style="color: white; background-color: #ef4444; padding: 20px; font-size: 1.2em; text-align: center; height: 100vh; display: flex; align-items: center; justify-content: center;"> <div style="max-width: 600px;"> <h1 style="font-size: 2em; margin-bottom: 1em;">Firebase Configuration Error</h1> <p>Your app is not connected to Firebase. You must replace the placeholder 'firebaseConfig' object in your <strong>admin.html, login.html, and index.html</strong> files with the actual configuration keys from your Firebase project console.</p> <p style="margin-top: 1em; font-size: 0.8em; color: #fecaca;">The Firestore connection will fail until this is corrected.</p></div></div>`;
+            document.body.innerHTML = errorHTML;
+            throw new Error("Firebase configuration is missing. Please add your project keys.");
+        }
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, deleteDoc, orderBy, query } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-storage.js";
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // --- Auth Guard ---
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                // FIX: Use a relative path that's valid for servers like GitHub Pages
+                window.location.href = './login.html';
+            }
+        });
+
+        // --- Logout ---
+        document.getElementById('logout-button').addEventListener('click', () => {
+            signOut(auth).catch(error => console.error("Logout error", error));
+        });
+
+        // --- Navigation ---
+        const navLinks = { messages: document.getElementById('nav-messages'), files: document.getElementById('nav-files') };
+        const views = { messages: document.getElementById('view-messages'), files: document.getElementById('view-files') };
+        
+        const switchView = (viewName) => {
+            Object.values(views).forEach(v => v.classList.add('hidden'));
+            Object.values(navLinks).forEach(l => l.classList.remove('active'));
+            views[viewName].classList.remove('hidden');
+            navLinks[viewName].classList.add('active');
+        };
+
+        navLinks.messages.addEventListener('click', () => switchView('messages'));
+        navLinks.files.addEventListener('click', () => switchView('files'));
+
+        // --- Message Handling ---
+        const messagesList = document.getElementById('messages-list');
+        const modal = document.getElementById('message-modal');
+        const q = query(collection(db, "contactMessages"), orderBy("timestamp", "desc"));
+
+        onSnapshot(q, (snapshot) => {
+            if (snapshot.empty) {
+                messagesList.innerHTML = '<p>No messages yet.</p>';
+                return;
+            }
+            messagesList.innerHTML = '';
+            snapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                const div = document.createElement('div');
+                div.className = 'bg-gray-800 p-4 rounded-lg cursor-pointer hover:bg-gray-700';
+                div.innerHTML = `
+                    <div class="flex justify-between">
+                        <p class="font-bold">${data.name}</p>
+                        <p class="text-sm text-gray-400">${new Date(data.timestamp?.toDate()).toLocaleString()}</p>
+                    </div>
+                    <p class="text-gray-300 truncate">${data.message}</p>`;
+                div.addEventListener('click', () => showMessageModal(docSnap.id, data));
+                messagesList.appendChild(div);
+            });
+        });
+
+        const showMessageModal = (id, data) => {
+            document.getElementById('modal-name').textContent = data.name;
+            document.getElementById('modal-email').textContent = data.email;
+            document.getElementById('modal-message').textContent = data.message;
+            document.getElementById('modal-reply-btn').href = `mailto:${data.email}`;
+            modal.querySelector('#modal-delete-btn').onclick = () => deleteMessage(id);
+            modal.classList.add('flex');
+        };
+
+        const deleteMessage = async (id) => {
+            // Replaced confirm() with a simple prompt as it's not supported in this environment
+            const confirmation = prompt("Type 'DELETE' to confirm you want to delete this message.");
+            if (confirmation === 'DELETE') {
+                await deleteDoc(doc(db, "contactMessages", id));
+                modal.classList.remove('flex');
+            }
+        };
+
+        modal.querySelector('#modal-close-btn').addEventListener('click', () => modal.classList.remove('flex'));
+        
+        // --- File Handling ---
+        const fileInput = document.getElementById('file-input');
+        const uploadButton = document.getElementById('upload-button');
+        const filesList = document.getElementById('files-list');
+        const uploadProgress = document.getElementById('upload-progress');
+        const progressBar = document.getElementById('progress-bar');
+        
+        uploadButton.addEventListener('click', () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const storageRef = ref(storage, `uploads/${file.name}`);
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    uploadProgress.classList.remove('hidden');
+                    progressBar.style.width = progress + '%';
+                }, 
+                (error) => { console.error("Upload error", error); }, 
+                () => {
+                    getDownloadURL(uploadTask.snapshot.ref).then(() => {
+                        fileInput.value = '';
+                        uploadProgress.classList.add('hidden');
+                        loadFiles(); // Refresh list
+                    });
+                }
+            );
+        });
+
+        const loadFiles = async () => {
+            const listRef = ref(storage, 'uploads');
+            filesList.innerHTML = '';
+            try {
+                const res = await listAll(listRef);
+                if (res.items.length === 0) {
+                    filesList.innerHTML = '<p>No files uploaded yet.</p>';
+                }
+                res.items.forEach(async (itemRef) => {
+                    const url = await getDownloadURL(itemRef);
+                    const div = document.createElement('div');
+                    div.className = 'bg-gray-800 p-3 rounded-lg flex justify-between items-center';
+                    div.innerHTML = `
+                        <span class="truncate">${itemRef.name}</span>
+                        <div>
+                            <a href="${url}" target="_blank" class="text-sm bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md mr-2">Download</a>
+                            <button data-ref-path="${itemRef.fullPath}" class="text-sm bg-red-600 hover:bg-red-700 px-3 py-1 rounded-md">Delete</button>
+                        </div>`;
+                    filesList.appendChild(div);
+                });
+            } catch (error) {
+                console.error("Error loading files:", error);
+                filesList.innerHTML = '<p>Could not load files.</p>';
+            }
+        };
+        
+        filesList.addEventListener('click', async (e) => {
+            if(e.target.tagName === 'BUTTON' && e.target.dataset.refPath) {
+                const confirmation = prompt("Type 'DELETE' to confirm you want to delete this file permanently.");
+                if(confirmation === 'DELETE') {
+                    const fileRef = ref(storage, e.target.dataset.refPath);
+                    await deleteObject(fileRef);
+                    loadFiles(); // Refresh list
+                }
+            }
+        });
+
+        loadFiles(); // Initial load
+    </script>
+</body>
+</html>
+

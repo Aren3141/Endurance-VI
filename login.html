@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Endurance VI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a1a;
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-200">
+    <div class="min-h-screen flex items-center justify-center">
+        <div class="max-w-md w-full bg-gray-900 p-8 rounded-lg shadow-lg">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold tracking-wider">ENDURANCE <span class="text-red-500">VI</span></h1>
+                <p class="text-gray-400">Team Admin Panel</p>
+            </div>
+            <form id="login-form">
+                <div id="error-message" class="hidden mb-4 p-3 rounded-md text-center bg-red-800 text-red-200"></div>
+                <div class="mb-6">
+                    <label for="email" class="block text-sm font-medium text-gray-400 mb-2">Email Address</label>
+                    <input type="email" id="email" name="email" required class="w-full bg-gray-800 border-gray-700 text-white rounded-md p-3 focus:ring-red-500 focus:border-red-500">
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-400 mb-2">Password</label>
+                    <input type="password" id="password" name="password" required class="w-full bg-gray-800 border-gray-700 text-white rounded-md p-3 focus:ring-red-500 focus:border-red-500">
+                </div>
+                <div>
+                    <button type="submit" id="login-button" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition-colors">
+                        Login
+                    </button>
+                </div>
+            </form>
+             <div class="mt-4 text-center">
+                 <a href="./index.html" class="text-xs text-gray-600 hover:text-red-400 transition-colors">&larr; Back to Main Site</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // IMPORTANT: Replace with your actual Firebase configuration
+        import { firebaseConfig } from './firebase-config.js';
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        
+        // If user is already logged in, redirect to admin panel
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.location.href = 'admin.html';
+            }
+        });
+
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+        const loginButton = document.getElementById('login-button');
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            loginButton.disabled = true;
+            loginButton.textContent = 'Logging in...';
+            errorMessage.classList.add('hidden');
+
+            const email = loginForm.email.value;
+            const password = loginForm.password.value;
+
+            signInWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    // Signed in, redirect handled by onAuthStateChanged
+                })
+                .catch((error) => {
+                    const errorCode = error.code;
+                    let message = "An unknown error occurred.";
+                    if (errorCode === 'auth/wrong-password' || errorCode === 'auth/user-not-found' || errorCode === 'auth/invalid-credential') {
+                        message = "Invalid email or password.";
+                    }
+                    console.error(error);
+                    errorMessage.textContent = message;
+                    errorMessage.classList.remove('hidden');
+                })
+                .finally(() => {
+                    loginButton.disabled = false;
+                    loginButton.textContent = 'Login';
+                });
+        });
+    </script>
+</body>
+</html>
+
