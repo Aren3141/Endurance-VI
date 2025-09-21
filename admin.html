@@ -146,7 +146,10 @@
                 const userDocRef = doc(db, "users", user.uid);
                 const userDocSnap = await getDoc(userDocRef);
                 currentUserData = userDocSnap.exists() ? userDocSnap.data() : { displayName: user.email, email: user.email };
+                
                 showWelcomeMessage(currentUserData.displayName);
+                // Load user-dependent content now that we have the user object
+                loadFiles(); 
             } else {
                 currentUser = null;
                 currentUserData = {};
@@ -286,8 +289,6 @@
             }
         });
         
-        onAuthStateChanged(auth, (user) => { if(user) loadFiles(); });
-
         const chatMessagesContainer = document.getElementById('chat-messages-container');
         const chatForm = document.getElementById('chat-form');
         const chatInput = document.getElementById('chat-input');
@@ -315,10 +316,12 @@
                             ${msg.text}
                         </div>
                     </div>
-                    ${isCurrentUser ? '' : deleteBtnHTML}
                 `;
-                 if (!isCurrentUser) messageWrapper.insertAdjacentHTML('beforeend', deleteBtnHTML);
-                 else messageWrapper.insertAdjacentHTML('afterbegin', deleteBtnHTML);
+                 if (!isCurrentUser) {
+                    messageWrapper.insertAdjacentHTML('beforeend', deleteBtnHTML);
+                 } else {
+                    messageWrapper.insertAdjacentHTML('afterbegin', deleteBtnHTML);
+                 }
 
                 chatMessagesContainer.appendChild(messageWrapper);
             });
