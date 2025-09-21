@@ -240,7 +240,7 @@
     <script type="module">
         import { firebaseConfig } from './firebase-config.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
 
         const app = initializeApp(firebaseConfig);
@@ -253,17 +253,34 @@
         const adminPanelLink = document.getElementById('admin-panel-link');
         const welcomeMessage = document.getElementById('welcome-message');
 
+        const showWelcomeMessage = (userName) => {
+            if (sessionStorage.getItem('welcomeShown')) return;
+
+            welcomeMessage.textContent = ⁠ Welcome, ${userName} ⁠;
+            welcomeMessage.classList.remove('hidden');
+            setTimeout(() => { welcomeMessage.classList.remove('opacity-0'); }, 10);
+            setTimeout(() => { welcomeMessage.classList.add('opacity-0'); }, 2000);
+            setTimeout(() => { welcomeMessage.classList.add('hidden'); }, 2500);
+            sessionStorage.setItem('welcomeShown', 'true');
+        };
+
         const handleSignOut = (e) => {
             e.preventDefault();
-            signOut(auth).catch(error => console.error("Logout error", error));
+            signOut(auth).then(() => {
+                sessionStorage.removeItem('welcomeShown');
+            }).catch(error => console.error("Logout error", error));
         };
         
-        onAuthStateChanged(auth, user => {
+        onAuthStateChanged(auth, async (user) => {
             loginLogoutLink.removeEventListener('click', handleSignOut);
             mobileLoginLogoutLink.removeEventListener('click', handleSignOut);
 
             if (user) {
                 // User is signed in
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+                const userName = userDocSnap.exists() ? userDocSnap.data().displayName : user.email;
+
                 loginLogoutLink.textContent = 'Logout';
                 loginLogoutLink.href = '#';
                 mobileLoginLogoutLink.textContent = 'Logout';
@@ -273,13 +290,7 @@
                 loginLogoutLink.addEventListener('click', handleSignOut);
                 mobileLoginLogoutLink.addEventListener('click', handleSignOut);
                 
-                if (welcomeMessage.classList.contains('hidden')) {
-                    welcomeMessage.textContent = `Welcome, ${user.email}`;
-                    welcomeMessage.classList.remove('hidden');
-                    setTimeout(() => { welcomeMessage.classList.remove('opacity-0'); }, 10);
-                    setTimeout(() => { welcomeMessage.classList.add('opacity-0'); }, 2000);
-                    setTimeout(() => { welcomeMessage.classList.add('hidden'); }, 2500);
-                }
+                showWelcomeMessage(userName);
 
             } else {
                 // User is signed out
@@ -294,7 +305,7 @@
 
         // --- Existing Page Script ---
         document.addEventListener('DOMContentLoaded', () => {
-            const heroTitle = document.querySelector('.hero-title'); const titleText = "Endurance VI"; heroTitle.innerHTML = titleText.split('').map(char => { if (char === ' ') { return ' '; } else if (char === 'V' || char === 'I') { return `<span class="letter text-gradient">${char}</span>`; } else { return `<span class="letter">${char}</span>`; } }).join(''); const letters = document.querySelectorAll('.hero-title .letter'); letters.forEach(letter => { letter.style.opacity = '1'; letter.style.transform = 'translateY(0) scale(1)'; }); setTimeout(() => { letters.forEach((letter, index) => { setTimeout(() => { letter.classList.add('disappearing'); letter.addEventListener('animationend', () => { letter.classList.remove('disappearing'); }, { once: true }); }, index * 100); }); }, 2500); const viToggle = document.getElementById('vi-toggle'); const ethosGrid = document.getElementById('ethos-grid'); const viContainer = document.querySelector('.vi-container'); const teamEthos = [ { title: 'Innovation', description: 'Constantly pushing the boundaries of design and technology to find the winning edge.' }, { title: 'Collaboration', description: 'Working seamlessly as a unit, where every member\'s contribution is vital to success.' }, { title: 'Precision', description: 'Meticulous attention to detail in every aspect, from the initial sketch to the final race.' }, { title: 'Resilience', description: 'Overcoming challenges with determination and learning from every setback.' }, { title: 'Sportsmanship', description: 'Competing with integrity, respecting our rivals, and representing our sponsors with pride.' }, { title: 'Passion', description: 'A shared love for motorsport and engineering that fuels our commitment and dedication.' } ]; const ethosGridContainer = ethosGrid.querySelector('.grid'); teamEthos.forEach(ethos => { const card = document.createElement('div'); card.className = 'ethos-card bg-gray-900 p-6 rounded-lg shadow-lg'; card.innerHTML = `<h4 class="text-xl font-bold text-red-500 mb-2">${ethos.title}</h4><p class="text-gray-400">${ethos.description}</p>`; ethosGridContainer.appendChild(card); }); viToggle.addEventListener('click', () => { const isHidden = ethosGrid.classList.contains('hidden'); if (isHidden) { ethosGrid.classList.remove('hidden'); viContainer.classList.add('open'); const cards = ethosGrid.querySelectorAll('.ethos-card'); cards.forEach((card, index) => { setTimeout(() => card.classList.add('visible'), index * 100); }); } else { viContainer.classList.remove('open'); const cards = ethosGrid.querySelectorAll('.ethos-card'); cards.forEach(card => card.classList.remove('visible')); setTimeout(() => ethosGrid.classList.add('hidden'), 500); } }); const mobileMenuButton = document.getElementById('mobile-menu-button'); const mobileMenu = document.getElementById('mobile-menu'); mobileMenuButton.addEventListener('click', () => { mobileMenu.classList.toggle('hidden'); }); const sections = document.querySelectorAll('.section-reveal'); const observer = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); } }); }, { threshold: 0.1 }); sections.forEach(section => observer.observe(section));
+            const heroTitle = document.querySelector('.hero-title'); const titleText = "Endurance VI"; heroTitle.innerHTML = titleText.split('').map(char => { if (char === ' ') { return ' '; } else if (char === 'V' || char === 'I') { return ⁠ <span class="letter text-gradient">${char}</span> ⁠; } else { return ⁠ <span class="letter">${char}</span> ⁠; } }).join(''); const letters = document.querySelectorAll('.hero-title .letter'); letters.forEach(letter => { letter.style.opacity = '1'; letter.style.transform = 'translateY(0) scale(1)'; }); setTimeout(() => { letters.forEach((letter, index) => { setTimeout(() => { letter.classList.add('disappearing'); letter.addEventListener('animationend', () => { letter.classList.remove('disappearing'); }, { once: true }); }, index * 100); }); }, 2500); const viToggle = document.getElementById('vi-toggle'); const ethosGrid = document.getElementById('ethos-grid'); const viContainer = document.querySelector('.vi-container'); const teamEthos = [ { title: 'Innovation', description: 'Constantly pushing the boundaries of design and technology to find the winning edge.' }, { title: 'Collaboration', description: 'Working seamlessly as a unit, where every member\'s contribution is vital to success.' }, { title: 'Precision', description: 'Meticulous attention to detail in every aspect, from the initial sketch to the final race.' }, { title: 'Resilience', description: 'Overcoming challenges with determination and learning from every setback.' }, { title: 'Sportsmanship', description: 'Competing with integrity, respecting our rivals, and representing our sponsors with pride.' }, { title: 'Passion', description: 'A shared love for motorsport and engineering that fuels our commitment and dedication.' } ]; const ethosGridContainer = ethosGrid.querySelector('.grid'); teamEthos.forEach(ethos => { const card = document.createElement('div'); card.className = 'ethos-card bg-gray-900 p-6 rounded-lg shadow-lg'; card.innerHTML = ⁠ <h4 class="text-xl font-bold text-red-500 mb-2">${ethos.title}</h4><p class="text-gray-400">${ethos.description}</p> ⁠; ethosGridContainer.appendChild(card); }); viToggle.addEventListener('click', () => { const isHidden = ethosGrid.classList.contains('hidden'); if (isHidden) { ethosGrid.classList.remove('hidden'); viContainer.classList.add('open'); const cards = ethosGrid.querySelectorAll('.ethos-card'); cards.forEach((card, index) => { setTimeout(() => card.classList.add('visible'), index * 100); }); } else { viContainer.classList.remove('open'); const cards = ethosGrid.querySelectorAll('.ethos-card'); cards.forEach(card => card.classList.remove('visible')); setTimeout(() => ethosGrid.classList.add('hidden'), 500); } }); const mobileMenuButton = document.getElementById('mobile-menu-button'); const mobileMenu = document.getElementById('mobile-menu'); mobileMenuButton.addEventListener('click', () => { mobileMenu.classList.toggle('hidden'); }); const sections = document.querySelectorAll('.section-reveal'); const observer = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); } }); }, { threshold: 0.1 }); sections.forEach(section => observer.observe(section));
 
             const contactForm = document.getElementById('contact-form');
             const formResponse = document.getElementById('form-response');
@@ -331,8 +342,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
