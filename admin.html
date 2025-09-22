@@ -12,7 +12,6 @@
         .sidebar-link:hover, .sidebar-link.active { background-color: #ef4444; color: white; }
         .modal { display: none; }
         .modal.flex { display: flex; }
-        .chat-message-container:hover .delete-chat-btn { opacity: 1; }
     </style>
 </head>
 <body class="antialiased">
@@ -96,9 +95,9 @@
             <h3 id="modal-name" class="text-2xl font-bold"></h3>
             <p id="modal-email" class="text-sm text-red-400 mb-4"></p>
             <p id="modal-message" class="text-gray-300 whitespace-pre-wrap mb-6"></p>
-            <div id="modal-footer" class="flex justify-end space-x-4">
+            <div class="flex justify-end space-x-4">
                 <a id="modal-reply-btn" href="#" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-semibold">Reply</a>
-                <button id="modal-delete-btn" class="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg font-semibold hidden">Delete</button>
+                <button id="modal-delete-btn" class="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg font-semibold" style="display: none;">Delete</button>
                 <button id="modal-close-btn" class="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg font-semibold">Close</button>
             </div>
         </div>
@@ -110,14 +109,14 @@
         import { firebaseConfig } from './firebase-config.js';
         
         if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-            const errorHTML = ⁠ <div style="color: white; background-color: #ef4444; padding: 20px; font-size: 1.2em; text-align: center; height: 100vh; display: flex; align-items: center; justify-content: center;"> <div style="max-width: 600px;"> <h1 style="font-size: 2em; margin-bottom: 1em;">Firebase Configuration Error</h1> <p>Your app is not connected to Firebase. You must replace the placeholder 'firebaseConfig' object in your <strong>admin.html, login.html, and index.html</strong> files with the actual configuration keys from your Firebase project console.</p> <p style="margin-top: 1em; font-size: 0.8em; color: #fecaca;">The Firestore connection will fail until this is corrected.</p></div></div> ⁠;
+            const errorHTML = `<div style="color: white; background-color: #ef4444; padding: 20px; font-size: 1.2em; text-align: center; height: 100vh; display: flex; align-items: center; justify-content: center;"> <div style="max-width: 600px;"> <h1 style="font-size: 2em; margin-bottom: 1em;">Firebase Configuration Error</h1> <p>Your app is not connected to Firebase. You must replace the placeholder 'firebaseConfig' object in your <strong>admin.html, login.html, and index.html</strong> files with the actual configuration keys from your Firebase project console.</p> <p style="margin-top: 1em; font-size: 0.8em; color: #fecaca;">The Firestore connection will fail until this is corrected.</p></div></div>`;
             document.body.innerHTML = errorHTML;
             throw new Error("Firebase configuration is missing. Please add your project keys.");
         }
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, deleteDoc, orderBy, query, addDoc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, deleteDoc, orderBy, query, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-storage.js";
 
         const app = initializeApp(firebaseConfig);
@@ -126,43 +125,40 @@
         const storage = getStorage(app);
 
         let currentUser = null;
-        let currentUserData = {};
-        const SUPER_ADMIN_EMAIL = 'arenkoprulu@gmail.com';
+        const superAdminEmail = 'arenkoprulu@gmail.com';
 
-        const showWelcomeMessage = (userName) => {
-            if (sessionStorage.getItem('welcomeShown')) return;
-            const welcomeMessage = document.getElementById('welcome-message');
-            welcomeMessage.textContent = ⁠ Welcome, ${userName} ⁠;
-            welcomeMessage.classList.remove('hidden');
-            setTimeout(() => { welcomeMessage.classList.remove('opacity-0'); }, 10);
-            setTimeout(() => { welcomeMessage.classList.add('opacity-0'); }, 2000);
-            setTimeout(() => { welcomeMessage.classList.add('hidden'); }, 2500);
-            sessionStorage.setItem('welcomeShown', 'true');
-        };
-
-        onAuthStateChanged(auth, async (user) => {
+        // --- Auth Guard & Welcome Message ---
+        onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
-                const userDocRef = doc(db, "users", user.uid);
-                const userDocSnap = await getDoc(userDocRef);
-                currentUserData = userDocSnap.exists() ? userDocSnap.data() : { displayName: user.email, email: user.email };
-                
-                showWelcomeMessage(currentUserData.displayName);
-                // Load user-dependent content now that we have the user object
-                loadFiles(); 
+                // **CHANGE**: Only show welcome message if 'justLoggedIn' flag is set
+                if (sessionStorage.getItem('justLoggedIn')) {
+                    const welcomeMessage = document.getElementById('welcome-message');
+                    welcomeMessage.textContent = `Welcome, ${user.email}`;
+                    welcomeMessage.classList.remove('hidden');
+                    
+                    setTimeout(() => { welcomeMessage.classList.remove('opacity-0'); }, 10);
+                    setTimeout(() => { welcomeMessage.classList.add('opacity-0'); }, 2000);
+                    setTimeout(() => { welcomeMessage.classList.add('hidden'); }, 2500);
+
+                    // **CHANGE**: Remove the flag so it doesn't show again on page refresh
+                    sessionStorage.removeItem('justLoggedIn');
+                }
+                // Reload data that depends on user role
+                loadFiles();
             } else {
                 currentUser = null;
-                currentUserData = {};
+                // On sign out, also clear the session storage flag
+                sessionStorage.removeItem('justLoggedIn');
                 window.location.href = './login.html';
             }
         });
 
         document.getElementById('logout-button').addEventListener('click', () => {
-            signOut(auth).then(() => {
-                sessionStorage.removeItem('welcomeShown');
-            }).catch(error => console.error("Logout error", error));
+            signOut(auth).catch(error => console.error("Logout error", error));
         });
 
+        // --- Navigation ---
         const navLinks = { 
             messages: document.getElementById('nav-messages'), 
             files: document.getElementById('nav-files'),
@@ -185,6 +181,7 @@
         navLinks.files.addEventListener('click', (e) => { e.preventDefault(); switchView('files'); });
         navLinks.chat.addEventListener('click', (e) => { e.preventDefault(); switchView('chat'); });
 
+        // --- Message Handling ---
         const messagesList = document.getElementById('messages-list');
         const modal = document.getElementById('message-modal');
         const messagesQuery = query(collection(db, "contactMessages"), orderBy("timestamp", "desc"));
@@ -199,7 +196,7 @@
                 const div = document.createElement('div');
                 div.className = 'bg-gray-800 p-4 rounded-lg cursor-pointer hover:bg-gray-700';
                 div.innerHTML = `
-                    <div class="flex justify-between items-center">
+                    <div class="flex justify-between">
                         <p class="font-bold">${data.name}</p>
                         <p class="text-sm text-gray-400">${new Date(data.timestamp?.toDate()).toLocaleString()}</p>
                     </div>
@@ -213,27 +210,36 @@
             document.getElementById('modal-name').textContent = data.name;
             document.getElementById('modal-email').textContent = data.email;
             document.getElementById('modal-message').textContent = data.message;
-            document.getElementById('modal-reply-btn').href = ⁠ mailto:${data.email} ⁠;
+            document.getElementById('modal-reply-btn').href = `mailto:${data.email}`;
             
-            const deleteBtn = document.getElementById('modal-delete-btn');
-            if(currentUser && currentUser.email === SUPER_ADMIN_EMAIL) {
-                deleteBtn.classList.remove('hidden');
+            const deleteBtn = modal.querySelector('#modal-delete-btn');
+            // **CHANGE**: Super admin feature for deleting contact messages
+            if (currentUser && currentUser.email === superAdminEmail) {
+                deleteBtn.style.display = 'inline-block';
                 deleteBtn.onclick = () => deleteMessage(id);
             } else {
-                 deleteBtn.classList.add('hidden');
+                deleteBtn.style.display = 'none';
             }
+            
             modal.classList.add('flex');
         };
 
         const deleteMessage = async (id) => {
-            if (prompt("Type 'DELETE' to confirm.") === 'DELETE') {
-                await deleteDoc(doc(db, "contactMessages", id));
-                modal.classList.remove('flex');
+            const confirmation = prompt("This action is permanent. Type 'DELETE' to confirm.");
+            if (confirmation === 'DELETE') {
+                try {
+                    await deleteDoc(doc(db, "contactMessages", id));
+                    modal.classList.remove('flex');
+                } catch (error) {
+                    console.error("Error deleting contact message:", error);
+                    alert("You do not have permission to delete this message.");
+                }
             }
         };
 
         modal.querySelector('#modal-close-btn').addEventListener('click', () => modal.classList.remove('flex'));
         
+        // --- File Handling ---
         const fileInput = document.getElementById('file-input');
         const uploadButton = document.getElementById('upload-button');
         const filesList = document.getElementById('files-list');
@@ -242,7 +248,7 @@
         
         uploadButton.addEventListener('click', () => {
             const file = fileInput.files[0]; if (!file) return;
-            const storageRef = ref(storage, ⁠ uploads/${file.name} ⁠);
+            const storageRef = ref(storage, `uploads/${file.name}`);
             const uploadTask = uploadBytesResumable(storageRef, file);
             uploadTask.on('state_changed', 
                 (snapshot) => {
@@ -260,19 +266,24 @@
             filesList.innerHTML = '';
             try {
                 const res = await listAll(listRef);
-                if (res.items.length === 0) { filesList.innerHTML = '<p>No files uploaded yet.</p>'; return; }
-                const isSuperAdmin = currentUser && currentUser.email === SUPER_ADMIN_EMAIL;
+                if (res.items.length === 0) { filesList.innerHTML = '<p>No files uploaded yet.</p>'; }
+                const isSuperAdmin = currentUser && currentUser.email === superAdminEmail;
 
                 res.items.forEach(async (itemRef) => {
                     const url = await getDownloadURL(itemRef);
                     const div = document.createElement('div');
                     div.className = 'bg-gray-800 p-3 rounded-lg flex justify-between items-center';
-                    const deleteBtnHTML = isSuperAdmin ? ⁠ <button data-ref-path="${itemRef.fullPath}" class="delete-file-btn text-sm bg-red-600 hover:bg-red-700 px-3 py-1 rounded-md">Delete</button> ⁠ : '';
+                    
+                    // **CHANGE**: Conditionally show the delete button for super admin
+                    const deleteButtonHTML = isSuperAdmin
+                        ? `<button data-ref-path="${itemRef.fullPath}" class="text-sm bg-red-600 hover:bg-red-700 px-3 py-1 rounded-md">Delete</button>`
+                        : '';
+
                     div.innerHTML = `
-                        <span class="truncate">${itemRef.name}</span>
-                        <div>
+                        <span class="truncate mr-4">${itemRef.name}</span>
+                        <div class="flex-shrink-0">
                             <a href="${url}" target="_blank" class="text-sm bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md mr-2">Download</a>
-                            ${deleteBtnHTML}
+                            ${deleteButtonHTML}
                         </div>`;
                     filesList.appendChild(div);
                 });
@@ -280,15 +291,22 @@
         };
         
         filesList.addEventListener('click', async (e) => {
-            if(e.target.classList.contains('delete-file-btn') && e.target.dataset.refPath) {
-                if(prompt("Type 'DELETE' to confirm.") === 'DELETE') {
-                    const fileRef = ref(storage, e.target.dataset.refPath);
-                    await deleteObject(fileRef);
-                    loadFiles();
+            if(e.target.tagName === 'BUTTON' && e.target.dataset.refPath) {
+                const confirmation = prompt("This action is permanent. Type 'DELETE' to confirm.");
+                if(confirmation === 'DELETE') {
+                    try {
+                        const fileRef = ref(storage, e.target.dataset.refPath);
+                        await deleteObject(fileRef);
+                        loadFiles(); // Refresh the list
+                    } catch(error) {
+                        console.error("Error deleting file:", error);
+                        alert("You do not have permission to delete this file.");
+                    }
                 }
             }
         });
         
+        // --- Admin Chat Handling ---
         const chatMessagesContainer = document.getElementById('chat-messages-container');
         const chatForm = document.getElementById('chat-form');
         const chatInput = document.getElementById('chat-input');
@@ -296,44 +314,45 @@
 
         onSnapshot(chatQuery, (snapshot) => {
             chatMessagesContainer.innerHTML = '';
-            const isSuperAdmin = currentUser && currentUser.email === SUPER_ADMIN_EMAIL;
+            const isSuperAdmin = currentUser && currentUser.email === superAdminEmail;
+
             snapshot.forEach(docSnap => {
                 const msg = docSnap.data();
-                const msgId = docSnap.id;
-                const isCurrentUser = currentUser && msg.userId === currentUser.uid;
+                const isSentByCurrentUser = currentUser && msg.userId === currentUser.uid;
 
                 const messageWrapper = document.createElement('div');
-                messageWrapper.className = ⁠ chat-message-container flex items-end gap-2 ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'} ⁠;
+                messageWrapper.className = `flex flex-col ${isSentByCurrentUser ? 'items-end' : 'items-start'}`;
                 
-                const deleteBtnHTML = isSuperAdmin ? `<button data-msg-id="${msgId}" class="delete-chat-btn opacity-0 transition-opacity text-gray-500 hover:text-red-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
-                </button>` : '';
+                // **CHANGE**: Add delete button for super admin
+                const deleteButtonHTML = isSuperAdmin 
+                    ? `<button data-chat-id="${docSnap.id}" class="delete-chat-btn text-xs text-gray-500 hover:text-red-400 ml-2">(delete)</button>` 
+                    : '';
 
                 messageWrapper.innerHTML = `
-                     <div class="flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}">
-                        <p class="text-xs text-gray-400 mb-1 px-1">${msg.userName || msg.userEmail}</p>
-                        <div class="p-3 rounded-lg max-w-md ${isCurrentUser ? 'bg-red-700 text-white' : 'bg-gray-700'}">
-                            ${msg.text}
-                        </div>
+                    <div class="flex items-center mb-1 px-1">
+                        <p class="text-xs text-gray-400">${msg.userEmail}</p>
+                        ${deleteButtonHTML}
+                    </div>
+                    <div class="p-3 rounded-lg max-w-md ${isSentByCurrentUser ? 'bg-red-700 text-white' : 'bg-gray-700'}">
+                        ${msg.text}
                     </div>
                 `;
-                 if (!isCurrentUser) {
-                    messageWrapper.insertAdjacentHTML('beforeend', deleteBtnHTML);
-                 } else {
-                    messageWrapper.insertAdjacentHTML('afterbegin', deleteBtnHTML);
-                 }
-
                 chatMessagesContainer.appendChild(messageWrapper);
             });
             chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
         });
 
+        // **CHANGE**: Add event listener for deleting chat messages
         chatMessagesContainer.addEventListener('click', async (e) => {
-            const deleteBtn = e.target.closest('.delete-chat-btn');
-            if (deleteBtn && deleteBtn.dataset.msgId) {
-                const msgId = deleteBtn.dataset.msgId;
-                 if (prompt("Type 'DELETE' to confirm deleting this chat message.") === 'DELETE') {
-                    await deleteDoc(doc(db, "adminChat", msgId));
+            if (e.target.classList.contains('delete-chat-btn')) {
+                const chatId = e.target.dataset.chatId;
+                if (chatId) {
+                    try {
+                        await deleteDoc(doc(db, "adminChat", chatId));
+                    } catch (error) {
+                        console.error("Error deleting chat message:", error);
+                        alert("You do not have permission to delete this message.");
+                    }
                 }
             }
         });
@@ -353,8 +372,7 @@
                     text: messageText,
                     timestamp: serverTimestamp(),
                     userId: currentUser.uid,
-                    userEmail: currentUser.email,
-                    userName: currentUserData.displayName
+                    userEmail: currentUser.email
                 });
                 chatInput.value = '';
             } catch (error) {
@@ -364,6 +382,7 @@
                 sendButton.textContent = 'Send';
             }
         });
+
     </script>
 </body>
 </html>

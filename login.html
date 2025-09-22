@@ -53,7 +53,7 @@
 
     <!-- Firebase SDK -->
     <script type="module">
-        // IMPORTANT: Replace with your actual Firebase configuration
+        // This assumes you have a firebase-config.js file
         import { firebaseConfig } from './firebase-config.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
@@ -78,19 +78,10 @@
 
         // --- Password Toggle Logic ---
         togglePasswordButton.addEventListener('click', () => {
-            // Check the current type of the password input
             const isPassword = passwordInput.type === 'password';
-
-            // Set the new type and toggle icon visibility
-            if (isPassword) {
-                passwordInput.type = 'text';
-                eyeIcon.classList.add('hidden');
-                eyeOffIcon.classList.remove('hidden');
-            } else {
-                passwordInput.type = 'password';
-                eyeIcon.classList.remove('hidden');
-                eyeOffIcon.classList.add('hidden');
-            }
+            passwordInput.type = isPassword ? 'text' : 'password';
+            eyeIcon.classList.toggle('hidden', isPassword);
+            eyeOffIcon.classList.toggle('hidden', !isPassword);
         });
 
         loginForm.addEventListener('submit', (e) => {
@@ -104,7 +95,9 @@
 
             signInWithEmailAndPassword(auth, email, password)
                 .then((userCredential) => {
-                    // Signed in, redirect handled by onAuthStateChanged
+                    // **CHANGE**: Set a session storage item to indicate a fresh login.
+                    sessionStorage.setItem('justLoggedIn', 'true');
+                    // Signed in, redirect is now handled by the onAuthStateChanged listener above.
                 })
                 .catch((error) => {
                     const errorCode = error.code;
@@ -124,4 +117,3 @@
     </script>
 </body>
 </html>
-
