@@ -130,11 +130,11 @@
         // ################### SUPER ADMIN SETTINGS ######################
         // ###############################################################
         //
-        // To change or assign the super admin, simply replace the 
-        // email address inside the single quotes below.
-        // Only this user will see the buttons to delete messages and files.
+        // To add or remove super admins, add or remove their email 
+        // addresses from the list below. Make sure each email is in 
+        // single quotes and separated by a comma.
         //
-        const superAdminEmail = 'arenkoprulu@gmail.com';
+        const superAdminEmails = ['arenkoprulu@gmail.com', 'Russel.dobson@csgrammar.com'];
         //
         // ###############################################################
         // ################# END OF SUPER ADMIN SETTINGS #################
@@ -223,7 +223,7 @@
             document.getElementById('modal-reply-btn').href = `mailto:${data.email}`;
             
             const deleteBtn = modal.querySelector('#modal-delete-btn');
-            if (currentUser && currentUser.email === superAdminEmail) {
+            if (currentUser && superAdminEmails.includes(currentUser.email)) {
                 deleteBtn.style.display = 'inline-block';
                 deleteBtn.onclick = () => deleteMessage(id);
             } else {
@@ -276,7 +276,7 @@
             try {
                 const res = await listAll(listRef);
                 if (res.items.length === 0) { filesList.innerHTML = '<p>No files uploaded yet.</p>'; }
-                const isSuperAdmin = currentUser && currentUser.email === superAdminEmail;
+                const isSuperAdmin = currentUser && superAdminEmails.includes(currentUser.email);
 
                 res.items.forEach(async (itemRef) => {
                     const url = await getDownloadURL(itemRef);
@@ -322,7 +322,7 @@
 
         onSnapshot(chatQuery, (snapshot) => {
             chatMessagesContainer.innerHTML = '';
-            const isSuperAdmin = currentUser && currentUser.email === superAdminEmail;
+            const isSuperAdmin = currentUser && superAdminEmails.includes(currentUser.email);
 
             snapshot.forEach(docSnap => {
                 const msg = docSnap.data();
